@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:resturent/src/model/menu_item.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:resturent/src/utils/api.dart';
 
 class MenuService {
-  static const String apiUrl = 'http://localhost:4000/api/menus/show/menu';
-  static const String addItemUrl = 'http://localhost:4000/api/menus/add/menu';
+  static const String apiUrl = '$API_URL/menus/show/menu';
+  static const String addItemUrl = '$API_URL/menus/add/menu';
 
   static Future<List<MenuItem>> fetchMenuItems() async {
     final response = await http.get(Uri.parse(apiUrl));
@@ -69,11 +70,13 @@ class _MenuPageState extends State<MenuPage> {
       try {
         await MenuService.addMenuItem(menuItem);
         setState(() {
-          futureMenuItems = MenuService.fetchMenuItems();  
+          futureMenuItems = MenuService.fetchMenuItems();
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Item added successfully')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Item added successfully')));
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add item: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to add item: $e')));
       }
     }
   }
@@ -131,7 +134,8 @@ class _MenuPageState extends State<MenuPage> {
                     onPressed: _addItem,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                       textStyle: TextStyle(fontSize: 20),
                     ),
                     child: Text('Add Item'),

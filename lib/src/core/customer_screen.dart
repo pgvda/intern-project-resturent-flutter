@@ -8,6 +8,8 @@ import 'package:resturent/src/utils/api.dart';
 class CustomerService {
   static const String getCustomerUrl = '$API_URL/customers/show/customer';
   static const String addCustomerUrl = '$API_URL/customers/add/customer';
+  static const String deleteCustomerUrl = '$API_URL/customers/delete/customer';
+  static const String updateCustomerUrl = '$API_URL/customers/update/customer';
 
   static Future<List<Customers>> fetchCustomers() async {
     final response = await http.get(Uri.parse(getCustomerUrl));
@@ -31,6 +33,28 @@ class CustomerService {
       throw Exception('Failed to add customer');
     }
   }
+
+  static Future<void> deleteCustomer(String id) async {
+    final response = await http.delete(
+      Uri.parse('$deleteCustomerUrl/$id'),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete customer');
+    }
+  }
+
+  static Future<void> updateCustomer(Customers customer) async {
+    final response = await http.put(
+      Uri.parse('$updateCustomerUrl/${customer.id}'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(customer.toJson()),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update customer');
+    }
+  }
 }
 
 class CustomerPage extends StatefulWidget {
@@ -46,6 +70,7 @@ class _CustomerPageState extends State<CustomerPage> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  Customers? _editingCustomer;
 
   @override
   void initState() {
@@ -61,26 +86,59 @@ class _CustomerPageState extends State<CustomerPage> {
     super.dispose();
   }
 
-  void _addCustomer() async {
+  void _addOrUpdateCustomer() async {
     if (_formKey.currentState!.validate()) {
       final customer = Customers(
-
+        id: _editingCustomer?.id ?? '',
         customerName: _nameController.text,
         customerEmail: _emailController.text,
-        //password: _passwordController.text,
+        // password: _passwordController.text,
       );
 
       try {
-        await CustomerService.addCustomer(customer);
+        if (_editingCustomer == null) {
+          await CustomerService.addCustomer(customer);
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Customer added successfully')));
+        } else {
+          await CustomerService.updateCustomer(customer);
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Customer updated successfully')));
+          _editingCustomer = null;
+        }
         setState(() {
-          futureCustomers = CustomerService.fetchCustomers();  // Refresh the customer list
+          futureCustomers = CustomerService.fetchCustomers();
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Customer added successfully')));
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add customer: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to add/update customer: $e')));
       }
     }
   }
+
+  void _deleteCustomer(String id) async {
+    try {
+      await CustomerService.deleteCustomer(id);
+      setState(() {
+        futureCustomers = CustomerService.fetchCustomers();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Customer deleted successfully')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete customer: $e')));
+    }
+  }
+
+  void _editCustomer(Customers customer) {
+    setState(() {
+      _editingCustomer = customer;
+      _nameController.text = customer.customerName;
+      _emailController.text = customer.customerEmail;
+      // _passwordController.text = customer.password; //not complete backend to get that data
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -146,13 +204,16 @@ class _CustomerPageState extends State<CustomerPage> {
                   ),
                   SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: _addCustomer,
+                    onPressed: _addOrUpdateCustomer,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                       textStyle: TextStyle(fontSize: 20),
                     ),
-                    child: Text('Add Customer'),
+                    child: Text(_editingCustomer == null
+                        ? 'Add Customer'
+                        : 'Update Customer'),
                   ),
                 ],
               ),
@@ -176,6 +237,19 @@ class _CustomerPageState extends State<CustomerPage> {
                       return ListTile(
                         title: Text(customer.customerName),
                         subtitle: Text(customer.customerEmail),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit),
+                              onPressed: () => _editCustomer(customer),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.delete),
+                              onPressed: () => _deleteCustomer(customer.id),
+                            ),
+                          ],
+                        ),
                       );
                     },
                   );
